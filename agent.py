@@ -45,18 +45,25 @@ def return_random_agents(num_agents):
             
         init_weights(agent)
         agents.append(agent)
-        
-        
+            
     return agents
 
 
-def mutate(agent):
+
+def annealing_function(iteration, original_mutation_power, lifetime):
+    
+    return original_mutation_power*np.exp(-iteration/lifetime)
+    
+
+def mutate(agent, anneal, iteration, original_mutation_power, lifetime):
 
     child_agent = copy.deepcopy(agent)
     
-    mutation_power = 0.02 #hyper-parameter, set from https://arxiv.org/pdf/1712.06567.pdf
+    mutation_power = 0.02
+    if anneal:
+        mutation_power = annealing_function(iteration, original_mutation_power, lifetime)
             
-
+    # print(f"iteration: {iteration}, mutation power: {mutation_power}, original: {original_mutation_power}, lifetime: {lifetime}")
     for param in child_agent.parameters():
 
         mutation = np.random.randn(*tuple(param.shape))
@@ -95,7 +102,7 @@ def crossover(good_parents):
     return crossovers
     
 
-def return_children(agents, sorted_parent_indexes, elite_index, cross_over=True):
+def return_children(agents, sorted_parent_indexes, elite_index, cross_over, anneal, iteration, original_mutation_power, lifetime):
     
     children_agents = []
     
@@ -109,7 +116,7 @@ def return_children(agents, sorted_parent_indexes, elite_index, cross_over=True)
     for i in range(len(agents)-1):
         
         selected_agent_index = np.random.randint(len(good_parents))
-        children_agents.append(mutate(good_parents[selected_agent_index]))
+        children_agents.append(mutate(good_parents[selected_agent_index], anneal, iteration, original_mutation_power, lifetime))
 
     #now add one elite
     elite_child, top_elite_score = add_elite(agents, sorted_parent_indexes, elite_index)
@@ -130,7 +137,7 @@ def add_elite(agents, sorted_parent_indexes, elite_index=None, only_consider_top
     
     for i in candidate_elite_index:
         score = return_average_score(agents[i],runs=5)
-        print("Score for elite i ", i, " is ", score)
+        #print("Score for elite i ", i, " is ", score)
         
         if(top_score is None):
             top_score = score
