@@ -144,6 +144,7 @@ def train_model(model_name, max_time, cross_over, anneal, original_mutation_powe
     data_save_path = model_name+"_data.txt"
     graph_save_path = model_name+"_graph.png"
     
+    numpy_save_path = model_name+"_alldata"
     
     score_list = []
     time_list = []
@@ -154,14 +155,15 @@ def train_model(model_name, max_time, cross_over, anneal, original_mutation_powe
     generation = 0
     start_time = time.time()
     
+    all_rewards = []
     
     while True:
         try:
             # return rewards of agents
             rewards = run_agents_n_times(agents, 3) #return average of 3 runs
-
+            all_rewards.append(rewards)
             # sort by rewards
-            sorted_parent_indexes = np.argsort(rewards)[::-1][:top_limit] #reverses and gives top values (argsort sorts by ascending by default) https://stackoverflow.com/questions/16486252/is-it-possible-to-use-argsort-in-descending-order
+            sorted_parent_indexes = np.argsort(rewards)[-top_limit:] 
             print("")
             print("")
             
@@ -196,7 +198,7 @@ def train_model(model_name, max_time, cross_over, anneal, original_mutation_powe
             
     plot_graph(score_list, time_list, model_name, graph_save_path)
     save_data(score_list, time_list, best_model_generation, data_save_path, cross_over, anneal, original_mutation_power, lifetime)
-    
+    np.savez_compressed(numpy_save_path, data=np.array(all_rewards))
 
 def play_agent(save_file):
     print("Testing")
@@ -224,7 +226,7 @@ if __name__ == '__main__':
     
     # model_name, max_time, cross_over, anneal, original_mutation_power, lifetime
     
-    test = True
+    test = False
     
     
     lifetime = 40
@@ -232,7 +234,10 @@ if __name__ == '__main__':
     if test:
         model_name = "test"
         train_model(model_name, 100, True, True, original_power, lifetime)
+        numpy_save_path = model_name+"_alldata.npz"
         
+        data = np.load(numpy_save_path)
+        print(data["data"].shape)
         play_agent(model_name+"_model.pth")
     else:
         ONE_HOUR = 60*60

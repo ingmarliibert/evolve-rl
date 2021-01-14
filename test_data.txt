@@ -1,7 +1,0 @@
-31.6,223.0
-24.048757553100586,119.39574670791626
-1
-Crossover: False
-anneal: True
-original mutation power: 0.5
-lifetime: 40
