@@ -8,6 +8,8 @@ from agent import *
 import numpy as np
 import copy
 import time
+import matplotlib.pyplot as plt
+
 
 def run_agents(agents):
     
@@ -60,47 +62,84 @@ def softmax(x):
 
 
 game_actions = 2 #2 actions possible: left or right
-num_agents = 100
+num_agents = 500
 # How many top agents to consider as parents
-top_limit = 10
+top_limit = 20
 # run evolution until X generations
 generations = 40
+
+
+save_file = "./original_with_crossover.pth"
+
+def save_agent(agent, filename):
+    torch.save(agent.state_dict(), filename)
+    
+def load_agent(filename):
+    agent = CartPoleAI()
+        
+    for param in agent.parameters():
+        param.requires_grad = False
+        
+    agent.load_state_dict(torch.load(filename))
+    
+    return agent
+    
+    
 
 if __name__ == '__main__':
     #disable gradients as we will not use them
     torch.set_grad_enabled(False)
-
+    
+    
+    
     # initialize N number of agents
     agents = return_random_agents(num_agents)
 
     elite_index = None
+    
+    start = time.time()
+    
+    score_list = []
+    top_score = 0
+    
+    generation = 0
+    while True:
+        try:
+            # return rewards of agents
+            rewards = run_agents_n_times(agents, 3) #return average of 3 runs
 
-    for generation in range(generations):
-        # return rewards of agents
-        rewards = run_agents_n_times(agents, 3) #return average of 3 runs
+            # sort by rewards
+            sorted_parent_indexes = np.argsort(rewards)[::-1][:top_limit] #reverses and gives top values (argsort sorts by ascending by default) https://stackoverflow.com/questions/16486252/is-it-possible-to-use-argsort-in-descending-order
+            print("")
+            print("")
+            
+            top_rewards = np.sort(rewards)[::-1][:top_limit]
 
-        # sort by rewards
-        sorted_parent_indexes = np.argsort(rewards)[::-1][:top_limit] #reverses and gives top values (argsort sorts by ascending by default) https://stackoverflow.com/questions/16486252/is-it-possible-to-use-argsort-in-descending-order
-        print("")
-        print("")
-        
-        top_rewards = []
-        for best_parent in sorted_parent_indexes:
-            top_rewards.append(rewards[best_parent])
-        
-        print("Generation ", generation, " | Mean rewards: ", np.mean(rewards), " | Mean of top 5: ",np.mean(top_rewards[:5]))
-        #print(rewards)
-        print("Top ",top_limit," scores", sorted_parent_indexes)
-        print("Rewards for top: ",top_rewards)
-        
-        # setup an empty list for containing children agents
-        children_agents, elite_index = return_children(agents, sorted_parent_indexes, elite_index)
+            print("Generation ", generation, " | Mean rewards: ", np.mean(rewards), " | Mean of top 5: ",np.mean(top_rewards[:5]))
+            print("Rewards for top: ",top_rewards)
+            
+            # setup an empty list for containing children agents
+            children_agents, elite_index, elite_score = return_children(agents, sorted_parent_indexes, elite_index, cross_over=True)
 
-        # kill all agents, and replace them with their children
-        agents = children_agents
+            print("Elite score:", elite_score)
+            if elite_score > top_score: 
+                print(f"Previous top score: {top_score}, new elite score: {elite_score}")
+                top_score = elite_score
+                save_agent(agents[elite_index], save_file)
+                
+            
+            # kill all agents, and replace them with their children
+            agents = children_agents
+            generation += 1
+        except KeyboardInterrupt:
+            #agent = agents[elite_index]
+            #save_agent(agent, save_file)
+            #print("SAVED!")
+            break
     
     print("Testing")
-    agent = agents[elite_index]
+    agent = load_agent(save_file)
+    print("LOADED!")
     agent.eval()
     outdir = '/tmp/random-agent-results'
     env = gym.make("CartPole-v0")
@@ -118,3 +157,7 @@ if __name__ == '__main__':
         time.sleep(0.1)
         if done:
             break
+            
+    stop = time.time()
+    
+    print(f"Time taken: {stop-start}")

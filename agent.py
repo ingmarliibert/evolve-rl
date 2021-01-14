@@ -56,49 +56,67 @@ def mutate(agent):
     
     mutation_power = 0.02 #hyper-parameter, set from https://arxiv.org/pdf/1712.06567.pdf
             
+
     for param in child_agent.parameters():
-    
-        if(len(param.shape)==4): #weights of Conv2D
 
-            for i0 in range(param.shape[0]):
-                for i1 in range(param.shape[1]):
-                    for i2 in range(param.shape[2]):
-                        for i3 in range(param.shape[3]):
-                            
-                            param[i0][i1][i2][i3]+= mutation_power * np.random.randn()
-                                
-                                    
-
-        elif(len(param.shape)==2): #weights of linear layer
-            for i0 in range(param.shape[0]):
-                for i1 in range(param.shape[1]):
-                    
-                    param[i0][i1]+= mutation_power * np.random.randn()
-                        
-
-        elif(len(param.shape)==1): #biases of linear layer or conv layer
-            for i0 in range(param.shape[0]):
-                
-                param[i0]+=mutation_power * np.random.randn()
-
+        mutation = np.random.randn(*tuple(param.shape))
+            
+        param += torch.from_numpy(mutation_power*mutation) 
+        
     return child_agent
+    
+    
+def apply_crossover(parent1, parent2):
+    new_agent = copy.deepcopy(parent1)
+    rng = np.random.default_rng()
+    for i, param in enumerate(new_agent.parameters()):
+        mask = rng.integers(0, 2, size=(tuple(param.shape)))
+        
+        param = np.where(mask == 0, list(parent1.parameters())[i], list(parent2.parameters())[i])
+        
+    return new_agent
+        
+        
+    
+def crossover(good_parents):
+    
+    crossovers = []
+    
+    for i in range(len(good_parents)):
+        crossovers.append(good_parents[i])
+        
+        idxs = np.random.choice(len(good_parents), replace=False, size=2)
+        
+        parent1 = good_parents[idxs[0]]
+        parent2 = good_parents[idxs[1]]
+        
+        crossovers.append(apply_crossover(parent1, parent2))
+        
+    return crossovers
+    
 
-def return_children(agents, sorted_parent_indexes, elite_index):
+def return_children(agents, sorted_parent_indexes, elite_index, cross_over=True):
     
     children_agents = []
+    
+    good_parents = [agents[i] for i in sorted_parent_indexes]
+        
+    if cross_over:
+        
+        good_parents = crossover(good_parents)
     
     #first take selected parents from sorted_parent_indexes and generate N-1 children
     for i in range(len(agents)-1):
         
-        selected_agent_index = sorted_parent_indexes[np.random.randint(len(sorted_parent_indexes))]
-        children_agents.append(mutate(agents[selected_agent_index]))
+        selected_agent_index = np.random.randint(len(good_parents))
+        children_agents.append(mutate(good_parents[selected_agent_index]))
 
     #now add one elite
-    elite_child = add_elite(agents, sorted_parent_indexes, elite_index)
+    elite_child, top_elite_score = add_elite(agents, sorted_parent_indexes, elite_index)
     children_agents.append(elite_child)
     elite_index=len(children_agents)-1 #it is the last one
     
-    return children_agents, elite_index
+    return children_agents, elite_index, top_elite_score
 
 def add_elite(agents, sorted_parent_indexes, elite_index=None, only_consider_top_n=10):
     
@@ -124,4 +142,4 @@ def add_elite(agents, sorted_parent_indexes, elite_index=None, only_consider_top
     print("Elite selected with index ",top_elite_index, " and score", top_score)
     
     child_agent = copy.deepcopy(agents[top_elite_index])
-    return child_agent
+    return child_agent, top_score
