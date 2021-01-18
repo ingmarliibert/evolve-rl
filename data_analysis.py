@@ -3,95 +3,64 @@
 
 
 import numpy as np
-import matplotlib.pyplot as plt 
-
-f1 = "crossover_data.txt"
-f2 = "annealing_data.txt"
-f3 = "original_data.txt"
-f4 = "crossover_annealing_data.txt"
+import matplotlib.pyplot as plt
 
 
 
-def read_file(filename):
-    times = []
-    elite_scores = []
-    with open(filename) as f:
-        count = 0
-        for line in f.readlines():
-            if count == 0:
-                line = line.strip().split(",")
-                for el in line:
-                    elite_scores.append(float(el))
-                    
-            elif count == 1:
-                line = line.strip().split(",")
-                for el in line:
-                    times.append(float(el))
-                    
-            else:
-                continue 
-                
-            count += 1
-                
-    return times, elite_scores
-    
-    
-def plot_annealing_elites():
-    global f2, f4
-    
-    ann_times, ann_scores = read_file(f2)
-    comb_times, comb_scores = read_file(f4)
+f1 = "crossover_alldata.npz"
+f2 = "crossover_annealing_alldata.npz"
+f3 = "annealing_alldata.npz"
+f4 = "original_alldata.npz"
 
-    fig, ax = plt.subplots(1,1)
-    ax.plot(ann_times, ann_scores, c="r", label="annealing")
-    ax.plot(comb_times, comb_scores, c="g", label="crossover and annealing")
+d1 = np.load(f1)["data"]
+
+
+def plot_crossover(ax, filename, title):
+    d = np.load(filename)["data"]
+    mean = np.mean(d, axis=1)
+    std = np.std(d, axis=1)
     
-    plt.legend()
-    
-    ax.set_xlim([0, 200])
-    
-    plt.savefig("annealing_elites_time.png")
-    plt.close(fig)
-    
-    fig, ax = plt.subplots(1,1)
-    ax.plot(np.arange(len(ann_scores)), ann_scores, c="r", label="annealing")
-    ax.plot(np.arange(len(comb_scores)), comb_scores, c="g", label="crossover and annealing")
-    
-    plt.legend()
-    
-    ax.set_xlim([0, 20])
-    
-    plt.savefig("annealing_elites_generation.png")
-    plt.close(fig)
-   
-   
-def plot_non_annealing_elites():
-    global f1, f3
-    
-    cross_times, cross_scores = read_file(f1)   
-    orig_times, orig_scores = read_file(f3)
-    
-    fig, ax = plt.subplots(1,1)
-    ax.plot(cross_times, cross_scores, c="r", label="crossover")
-    ax.plot(orig_times, orig_scores, c="g", label="original")
-    
-    plt.legend()
-    
-    
-    plt.savefig("non_annealing_elites_time.png")
-    plt.close(fig)
-    
-    fig, ax = plt.subplots(1,1)
-    ax.plot(np.arange(len(cross_times)), cross_scores, c="r", label="crossover")
-    ax.plot(np.arange(len(orig_scores)), orig_scores, c="g", label="original")
-    
-    plt.legend()
-    
-    
-    plt.savefig("non_annealing_elites_generation.png")
-    plt.close(fig)
+    ax.set_title(title)
+    ax.plot(np.arange(len(mean)), mean, c="g", label="mean")
+    ax.plot(np.arange(len(std)), std, c="r", label="std")
+    ax.legend()
     
 
-# plot_annealing_elites()
-# plot_non_annealing_elites()
+
+def plot_annealing(ax, filename, title):
+    d = np.load(filename)["data"]
+    mean = np.mean(d, axis=1)
+    std = np.std(d, axis=1)
+    
+    
+    
+    
+    ax.set_title(title)
+    ax.plot(np.arange(len(mean)), mean, c="g", label="mean")
+    ax.plot(np.arange(len(std)), std, c="r", label="std")
+
+    ax2 = ax.twinx()
+    
+    x = np.arange(len(mean))
+    y = 0.5*np.exp(-x/40)
+    
+    ax2.plot(x, y, c="y", label="mutation power")
+    
+    lines, labels = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax2.legend(lines + lines2, labels + labels2, loc="center right")
+    #ax2.set_yscale('log')
+    
+
+fig, axs = plt.subplots(2,2, tight_layout=True, figsize=(20,16))
+
+plot_annealing(axs[0,0], f3, "annealing only")
+plot_annealing(axs[0,1], f3, "annealing and crossover")
+plot_crossover(axs[1,0], f1, "crossover only")
+plot_crossover(axs[1,1], f4, "original")
+
+plt.savefig("general_statistics.png")
+
+
+
 
