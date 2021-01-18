@@ -226,18 +226,14 @@ if __name__ == '__main__':
 
     # model_name, max_time, cross_over, anneal, original_mutation_power, lifetime
 
-    test = False
+    test = True
 
     lifetime = 40
     original_power = 0.5
     if test:
-        model_name = "test"
-        train_model(model_name, 100, True, True, original_power, lifetime)
-        numpy_save_path = model_name+"_alldata.npz"
-
-        data = np.load(numpy_save_path)
-        print(data["data"].shape)
-        play_agent(model_name+"_model.pth")
+        # model_name = "test"
+        # train_model(model_name, 100, True, True, original_power, lifetime)
+        play_agent("crossover_annealing_model.pth")
     else:
         ONE_HOUR = 60*60
 
