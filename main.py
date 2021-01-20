@@ -166,7 +166,8 @@ def train_model(model_name, max_time, cross_over, anneal, original_mutation_powe
             sorted_parent_indexes = np.argsort(rewards)[-top_limit:]
             print("")
             print("")
-
+    
+            
             top_rewards = np.sort(rewards)[::-1][:top_limit]
 
             print("Generation ", generation, " | Mean rewards: ", np.mean(rewards), " | Mean of top 5: ",np.mean(top_rewards[:5]))
@@ -200,6 +201,66 @@ def train_model(model_name, max_time, cross_over, anneal, original_mutation_powe
     save_data(score_list, time_list, best_model_generation, data_save_path, cross_over, anneal, original_mutation_power, lifetime)
     np.savez_compressed(numpy_save_path, data=np.array(all_rewards))
 
+
+def train_random_model(max_time):
+    agents = return_random_agents(num_agents)
+    
+    elite_index = None
+    
+    agent_data_path = "random_data.npz"
+    
+    model_save_path = "random_model.pth"
+    
+    all_rewards = []
+    start_time = time.time()
+    generation = 0
+    score_list = []
+    
+    all_stats = []
+    
+    top_score = 0
+    
+    while True: 
+        try:
+            rewards = run_agents_n_times(agents, 3)
+            all_rewards.append(rewards)
+            sorted_parent_indexes = np.argsort(rewards)[-top_limit:]
+            print("")
+            generation_stats = []
+            for agent in agents:
+                generation_stats.append(agent.get_stats)
+                
+            all_stats.append(generation_stats)
+            top_rewards = np.sort(rewards)[::-1][:top_limit]
+
+            print("Generation ", generation, " | Mean rewards: ", np.mean(rewards), " | Mean of top 5: ",np.mean(top_rewards[:5]))
+
+            # setup an empty list for containing children agents
+            children_agents, elite_index, elite_score = return_random_children(agents, sorted_parent_indexes, elite_index)
+
+            print(f"Elite score: {elite_score}, previous top score: {top_score}, better than previous top: {elite_score > top_score}.")
+            if elite_score > top_score:
+                top_score = elite_score
+                save_agent(agents[elite_index], model_save_path)
+                best_model_generation = generation
+
+            score_list.append(elite_score)
+            current_time = time.time()
+
+            if current_time-start_time > max_time:
+                break
+
+            # kill all agents, and replace them with their children
+            agents = children_agents
+            generation += 1
+        except KeyboardInterrupt:
+            break
+    
+    np.savez_compressed(agent_data_path, all_rewards=np.array(all_rewards), elite_scores=np.array(score_list), all_stats=np.array(all_stats))
+    
+    
+    
+
 def play_agent(save_file):
     print("Testing")
     agent = load_agent(save_file)
@@ -231,25 +292,30 @@ if __name__ == '__main__':
     lifetime = 40
     original_power = 0.5
     if test:
+        print("running model...")
+        # train_model("test", 240, False, False, original_power, lifetime)
+        #train_random_model(240)
         # model_name = "test"
         # train_model(model_name, 100, True, True, original_power, lifetime)
-        play_agent("crossover_annealing_model.pth")
+        play_agent("annealing_model.pth")
     else:
         ONE_HOUR = 60*60
 
-        TRAIN_TIME = 2*ONE_HOUR
+        TRAIN_TIME = 600
+        
+        
 
-        model_name = "original"
-        train_model(model_name, TRAIN_TIME, False, False, original_power, lifetime)
+        # model_name = "original"
+        # train_model(model_name, TRAIN_TIME, False, False, original_power, lifetime)
 
-        model_name = "crossover"
-        train_model(model_name, TRAIN_TIME, True, False, original_power, lifetime)
+        # model_name = "crossover"
+        # train_model(model_name, TRAIN_TIME, True, False, original_power, lifetime)
 
-        model_name = "annealing"
-        train_model(model_name, TRAIN_TIME, False, True, original_power, lifetime)
+        # model_name = "annealing"
+        # train_model(model_name, TRAIN_TIME, False, True, original_power, lifetime)
 
-        model_name = "crossover_annealing"
-        train_model(model_name, TRAIN_TIME, True, True, original_power, lifetime)
+        # model_name = "crossover_annealing"
+        # train_model(model_name, TRAIN_TIME, True, True, original_power, lifetime)
 
 
     # play_agent(model_name+"_model.pth")

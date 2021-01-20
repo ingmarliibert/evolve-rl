@@ -21,6 +21,15 @@ class CartPoleAI(nn.Module):
     def forward(self, inputs):
         x = self.fc(inputs)
         return x
+        
+    def get_stats(self):
+        stats = []
+        count = 0
+        for param in self.parameters():
+            numpy_param = param.numpy()
+            stats.append((numpy_param.mean(), numpy_param.std()))
+            
+        return stats
 
 def init_weights(m):
     # nn.Conv2d weights are of shape [16, 1, 3, 3] i.e. # number of filters, 1, stride, stride
@@ -59,7 +68,7 @@ def mutate(agent, anneal, iteration, original_mutation_power, lifetime):
 
     child_agent = copy.deepcopy(agent)
     
-    mutation_power = 0.02
+    mutation_power = 0.4
     if anneal:
         mutation_power = annealing_function(iteration, original_mutation_power, lifetime)
             
@@ -101,6 +110,37 @@ def crossover(good_parents):
         
     return crossovers
     
+    
+def generate_random_child(parent):
+    # generates a random child with parameters normally distributed with the same mean and std as original
+    
+    child_agent = copy.deepcopy(parent)
+    
+    for param in child_agent.parameters():
+        numpy_param = param.numpy()
+        
+        new_params = np.random.randn(*numpy_param.shape)*numpy_param.std()+numpy_param.mean()
+        
+        param = torch.from_numpy(new_params)
+        
+    return child_agent
+    
+    
+def return_random_children(agents, sorted_parent_indexes, elite_index):
+    children_agents = []
+    
+    good_parents = [agents[i] for i in sorted_parent_indexes]
+    
+    for i in range(len(agents)-1):
+        selected_agent_index = np.random.randint(len(good_parents))
+        children_agents.append(generate_random_child(good_parents[selected_agent_index]))
+    
+    #now add one elite
+    elite_child, top_elite_score = add_elite(agents, sorted_parent_indexes, elite_index)
+    children_agents.append(elite_child)
+    elite_index=len(children_agents)-1 #it is the last one
+    
+    return children_agents, elite_index, top_elite_score
 
 def return_children(agents, sorted_parent_indexes, elite_index, cross_over, anneal, iteration, original_mutation_power, lifetime):
     
